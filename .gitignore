@@ -1,0 +1,7 @@
+.idea
+.settings
+frameworks
+.cocos-project.json
+.project
+manifest.webapp
+runtime
