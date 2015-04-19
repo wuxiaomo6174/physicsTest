@@ -15,6 +15,27 @@ var Circle = cc.PhysicsSprite.extend({
         //set shape
         var shape = new cp.CircleShape(this.body,10,0);
         shape.setElasticity(10);
+        shape.setCollisionType(CONST.COLLISION_TYPE);
+        this.space.addShape(shape);
+
+        this.setBody(this.body);
+        this.body.data= this;
+    }
+});
+
+var Bullet = cc.PhysicsSprite.extend({
+    space:null,
+    ctor: function(space,png){
+        this._super(png);
+        this.space= space;
+        //set body
+        this.body = new cp.Body(10, cp.momentForCircle(10,0,10,cp.v(0,0)));
+
+        this.space.addBody(this.body);
+        //set shape
+        var shape = new cp.CircleShape(this.body,10,0);
+        shape.setElasticity(10);
+        shape.setCollisionType(CONST.COLLISION_TYPE);
         this.space.addShape(shape);
 
         this.setBody(this.body);

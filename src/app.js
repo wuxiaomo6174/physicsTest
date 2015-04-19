@@ -1,6 +1,8 @@
 
-var CONSTENT={
-    "DOT_NUM":30
+var CONST={
+    "DOT_NUM":30,
+    "COLLISION_TYPE":1
+
 };
 
 var HelloWorldLayer = cc.Layer.extend({
@@ -21,15 +23,16 @@ var HelloWorldLayer = cc.Layer.extend({
         this.addChild(circle,1,1);
         //circle.body.applyImpulse(cp.v(circle.x,circle.y),cp.v(300,400));
        // circle.runAction(cc.moveBy(2,cc.p(100,100)));
-        circle.body.setVel(cp.v(0,200));
+        //circle.body.setVel(cp.v(0,200));
         circle.body.applyForce(cp.v(0,100),cp.v(0,0));
 
 
         this.scheduleUpdate();
 
         this.endPoint = new cc.Sprite(res.dot_png);
+        //this.endPoint.setVisible(false);
         this.dots={};
-        for(var i=0;i!=CONSTENT.DOT_NUM;i++){
+        for(var i=0;i!=CONST.DOT_NUM;i++){
             this.dots[i]= new cc.Sprite(res.circle_png);
             this.addChild(this.dots[i]);
             this.dots[i].setPosition(cc.p(i*20,i*20));
@@ -48,6 +51,35 @@ var HelloWorldLayer = cc.Layer.extend({
             onTouchMoved:this.onTouchMoved,
             onTouchEnded:this.onTouchEnded
         },this);
+
+        this.space.addCollisionHandler(
+            CONST.COLLISION_TYPE,
+            CONST.COLLISION_TYPE,
+
+            this.collisionBegin.bind(this)
+
+        )
+    },
+    collisionBegin:function(arbiter, space){
+        cc.log('collisionBegin');
+        var shapes = arbiter.getShape();
+
+        var bodyA = shapes[0].getBody();
+        var bodyB = shapes[1].getBody();
+
+        var SpriteA = bodyA.data;
+        var SpriteB = bodyB.data;
+
+        if(SpriteA instanceof Circle && SpriteB instanceof Bullet ){
+
+            return false;
+        }
+
+        if(SpriteA instanceof Bullet && SpriteB instanceof Circle ){
+
+            return false;
+        }
+        return false;
     },
     onTouchBegan:function(touch,event){
         var target= event.getCurrentTarget();
@@ -70,16 +102,21 @@ var HelloWorldLayer = cc.Layer.extend({
         this.dragDistanceX = this.dragOffsetStartX - this.dragOffsetEndX;
         this.dragDistanceY = this.dragOffsetStartY - this.dragOffsetEndY;
         target.simulateTrajectory(target.getDirect(this.dragOffsetEndY/this.dragOffsetEndX));
+        return true;
     },
     onTouchEnded:function(touch,event){
         //project a bullet
         var target= event.getCurrentTarget();
-
+        this.endX = touch.getLocationX();
+        this.endY = touch.getLocationY();
         //hide trajectory
-        for(var i=0;i!=CONSTENT.DOT_NUM;i++){
+        for(var i=0;i!=CONST.DOT_NUM;i++){
             target.dots[i].opacity =0;
         }
-        //target.endPoint.setVel(100,100);
+
+        var bullet = new Bullet(target.space,res.ball_png);
+        bullet.setPosition(cc.p(0,0));
+        bullet.body.setVel(cp.v(this.endX,this.endY));
     },
     simulateTrajectory:function(v){
        //init one body
@@ -94,7 +131,7 @@ var HelloWorldLayer = cc.Layer.extend({
         var cx = c.x, cy = c.y;
         var cvx = c.body.vx, cvy= c.body.vy;
 
-        for(var i=0;i!=CONSTENT.DOT_NUM;i++){
+        for(var i=0;i!=CONST.DOT_NUM;i++){
             this.dots[i].opacity =255;
             this.space.step(this.deltaTime*2);
             this.dots[i].setPosition(body.p.x,body.p.y);
