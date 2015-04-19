@@ -12,7 +12,10 @@
 
     "jsList" : [
         "src/resource.js",
-        "src/app.js",
+
+"src/good.js", "src/app.js",
+         "src/test.js",
         "src/physics.js"
+
     ]
 }

@@ -17,14 +17,31 @@ var HelloWorldLayer = cc.Layer.extend({
         this.space = new cp.Space();
         this.setupDebugNode();
         this.space.gravity = cp.v(0,-100);
-        var circle = new Circle(this.space,res.ball_png);
+        var winSize = cc.winSize;
+        var staticBody = this.space.staticBody;
+        // Walls
+        var walls = [ new cp.SegmentShape(staticBody, cp.v(0, 0), cp.v(winSize.width, 0), 0),				// bottom
+            new cp.SegmentShape(staticBody, cp.v(0, winSize.height), cp.v(winSize.width, winSize.height), 0),	// top
+            new cp.SegmentShape(staticBody, cp.v(0, 0), cp.v(0, winSize.height), 0),				// left
+            new cp.SegmentShape(staticBody, cp.v(winSize.width, 0), cp.v(winSize.width, winSize.height), 0)	// right
+        ];
+        for (var i = 0; i < walls.length; i++) {
+            var shape = walls[i];
+            shape.setElasticity(1);
+            shape.setFriction(1);
+            shape.setCollisionType(10);
+            this.space.addStaticShape(shape);
+        }
+
+        var circle = new Box(this.space,res.ball_png);
 
         circle.setPosition(cc.p(300,100));
-        this.addChild(circle,1,1);
-        //circle.body.applyImpulse(cp.v(circle.x,circle.y),cp.v(300,400));
-       // circle.runAction(cc.moveBy(2,cc.p(100,100)));
-        //circle.body.setVel(cp.v(0,200));
-        circle.body.applyForce(cp.v(0,100),cp.v(0,0));
+        this.addChild(circle);
+        circle.xtag=true;
+       // circle.body.applyImpulse(cp.v(circle.x,circle.y),cp.v(300,400));
+       //circle.runAction(cc.moveBy(2,cc.p(100,100)));
+       // circle.body.setVel(cp.v(0,200));
+       // circle.body.applyForce(cp.v(0,100),cp.v(0,0));
 
 
         this.scheduleUpdate();
@@ -53,16 +70,17 @@ var HelloWorldLayer = cc.Layer.extend({
         },this);
 
         this.space.addCollisionHandler(
-            CONST.COLLISION_TYPE,
-            CONST.COLLISION_TYPE,
-
-            this.collisionBegin.bind(this)
+            1,1,
+            this.collisionBegin.bind(this),
+            this.collisionPre.bind(this),
+            this.collisionPost.bind(this),
+            this.collisionSeparate.bind(this)
 
         )
     },
     collisionBegin:function(arbiter, space){
         cc.log('collisionBegin');
-        var shapes = arbiter.getShape();
+        var shapes = arbiter.getShapes();
 
         var bodyA = shapes[0].getBody();
         var bodyB = shapes[1].getBody();
@@ -81,16 +99,41 @@ var HelloWorldLayer = cc.Layer.extend({
         }
         return false;
     },
+    collisionPre : function ( arbiter, space ) {
+        cc.log('collision Pre');
+        return true;
+    },
+
+    collisionPost : function ( arbiter, space ) {
+        cc.log('collision Post');
+    },
+
+    collisionSeparate : function ( arbiter, space ) {
+
+        var shapes = arbiter.getShapes();
+        var bodyA = shapes[0].getBody();
+        var bodyB = shapes[1].getBody();
+
+        var spriteA = bodyA.data;
+        var spriteB = bodyB.data;
+
+        if (spriteA != null && spriteB != null)
+        {
+            spriteA.setColor(new cc.Color(255, 255, 255, 255));
+            spriteB.setColor(new cc.Color(255, 255, 255, 255));
+        }
+
+        cc.log('collision Separate');
+    },
     onTouchBegan:function(touch,event){
         var target= event.getCurrentTarget();
         this.dragOffsetStartX = touch.getLocationX();
         this.dragOffsetStartY = touch.getLocationY();
 
-        target.endPoint.setPosition(this.dragOffsetStartX,this.dragOffsetStartY);
-        target.unscheduleUpdate();
-        target.scheduleUpdate();
+        //target.endPoint.setPosition(this.dragOffsetStartX,this.dragOffsetStartY);
 
-        target.simulateTrajectory(target.getDirect(this.dragOffsetStartY/this.dragOffsetStartX));
+        //target.simulateTrajectory(target.getDirect(this.dragOffsetStartY/this.dragOffsetStartX));
+
         return true;
     },
     onTouchMoved:function(touch,event){
@@ -114,9 +157,11 @@ var HelloWorldLayer = cc.Layer.extend({
             target.dots[i].opacity =0;
         }
 
-        var bullet = new Bullet(target.space,res.ball_png);
+        var bullet = new Box(target.space,res.ball_png);
         bullet.setPosition(cc.p(0,0));
+        bullet.xtag=true;
         bullet.body.setVel(cp.v(this.endX,this.endY));
+        target.addChild(bullet);
     },
     simulateTrajectory:function(v){
        //init one body
@@ -127,9 +172,18 @@ var HelloWorldLayer = cc.Layer.extend({
         this.space.addShape(shape);
         body.setVel(v);
 
-        var c= this.getChildByTag(1);
-        var cx = c.x, cy = c.y;
-        var cvx = c.body.vx, cvy= c.body.vy;
+        //temp save position and vx
+        var childList = this.getChildren();
+        var xList=[];
+        for(var i = 0 ;i!=childList.length;i++){
+            if(childList[i].visible && childList[i].xtag){
+                xList.push([childList[i],childList[i].x,childList[i].y,childList[i].body.vx,childList[i].body.vy]);
+
+            }
+        }
+        //var c= this.getChildByTag(1);
+        //var cx = c.x, cy = c.y;
+        //var cvx = c.body.vx, cvy= c.body.vy;
 
         for(var i=0;i!=CONST.DOT_NUM;i++){
             this.dots[i].opacity =255;
@@ -140,8 +194,14 @@ var HelloWorldLayer = cc.Layer.extend({
         }
         this.space.removeBody(body);
 
-        c.setPosition(cc.p(cx,cy));
-        c.body.setVel(cp.v(cvx,cvy));
+        //restore
+        for(var k=0;k!=xList.length;k++){
+            var sprite = xList[k][0];
+            sprite.body.setPos(cc.p(xList[k][1],xList[k][2]));
+            sprite.body.setVel(cp.v(xList[k][3],xList[k][4]));
+        }
+        //c.setPosition(cc.p(cx,cy));
+        //c.body.setVel(cp.v(cvx,cvy));
     },
     drawDots:function(p){
 
@@ -155,7 +215,7 @@ var HelloWorldLayer = cc.Layer.extend({
 
         var c= this.getChildByTag(1);
 
-        if(c.y>0){
+        if(c&&c.y>0){
 
         //cc.log(c);
          //   cc.log(c.body.f);
@@ -166,7 +226,7 @@ var HelloWorldLayer = cc.Layer.extend({
         //cc.log(this.space.getCurrentTimeStep());
         this.deltaTime = dt;
         this.space.step(0.017);
-
+        //kill the sprite our of window
 
     },
     setupDebugNode:function(){
