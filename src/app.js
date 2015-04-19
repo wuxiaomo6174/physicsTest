@@ -144,6 +144,7 @@ var HelloWorldLayer = cc.Layer.extend({
         target.endPoint.setPosition(this.dragOffsetEndX,this.dragOffsetEndY);
         this.dragDistanceX = this.dragOffsetStartX - this.dragOffsetEndX;
         this.dragDistanceY = this.dragOffsetStartY - this.dragOffsetEndY;
+        target.unscheduleUpdate();
         target.simulateTrajectory(target.getDirect(this.dragOffsetEndY/this.dragOffsetEndX));
         return true;
     },
@@ -162,13 +163,15 @@ var HelloWorldLayer = cc.Layer.extend({
         bullet.xtag=true;
         bullet.body.setVel(cp.v(this.endX,this.endY));
         target.addChild(bullet);
+
+        target.scheduleUpdate();
     },
     simulateTrajectory:function(v){
        //init one body
         var body = new cp.Body(1, cp.momentForCircle(1,0,10,cp.v(0,0)));
         this.space.addBody(body);
         //set shape
-        var shape = new cp.CircleShape(body,10,0);
+        var shape = new cp.CircleShape(body,10,cp.vzero);
         this.space.addShape(shape);
         body.setVel(v);
 
@@ -193,6 +196,7 @@ var HelloWorldLayer = cc.Layer.extend({
 
         }
         this.space.removeBody(body);
+        this.space.removeShape(shape);
 
         //restore
         for(var k=0;k!=xList.length;k++){
