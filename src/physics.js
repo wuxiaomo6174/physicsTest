@@ -8,7 +8,7 @@ var Circle = cc.PhysicsSprite.extend({
         this._super(png);
         this.space = space;
         //set body
-        this.body = new cp.Body(1, cp.momentForCircle(1,0,10,cp.v(0,0)));
+        this.body = new cp.Body(10, cp.momentForCircle(10,0,10,cp.v(0,0)));
         //this.body.setPos (cc.p(100,100));
         //this.body.applyImpulse(cp.v(100,100),cp.v(300,300));
         this.space.addBody(this.body);
